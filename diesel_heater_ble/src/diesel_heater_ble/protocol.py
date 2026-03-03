@@ -1527,7 +1527,7 @@ class ProtocolHcalory(HeaterProtocol):
             Command packet to switch to level mode
         """
         from .const import HCALORY_CMD_POWER, HCALORY_POWER_MODE_LEVEL
-        # @Xev btsnoop analysis (issue #43): 0x06=Level, 0x07=Temp
+        # @Xev btsnoop analysis (issue #43): 0x07=Level, 0x06=Temp
         return self._build_hcalory_cmd(
             HCALORY_CMD_POWER,
             bytes([0, 0, 0, 0, 0, 0, 0, 0, HCALORY_POWER_MODE_LEVEL])
@@ -1540,7 +1540,7 @@ class ProtocolHcalory(HeaterProtocol):
             Command packet to switch to temperature mode
         """
         from .const import HCALORY_CMD_POWER, HCALORY_POWER_MODE_TEMP
-        # @Xev btsnoop analysis (issue #43): 0x06=Level, 0x07=Temp
+        # @Xev btsnoop analysis (issue #43): 0x07=Level, 0x06=Temp
         return self._build_hcalory_cmd(
             HCALORY_CMD_POWER,
             bytes([0, 0, 0, 0, 0, 0, 0, 0, HCALORY_POWER_MODE_TEMP])
