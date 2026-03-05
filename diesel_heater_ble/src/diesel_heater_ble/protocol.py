@@ -1279,12 +1279,12 @@ class ProtocolHcalory(HeaterProtocol):
                 bytes([level])
             )
 
-        # Set auto start/stop (custom: cmd 22)
+        # Set auto start/stop (custom: cmd 22) — toggle command (@Xev, issue #43)
+        # Auto start/stop is a TOGGLE (0x05), not separate ON/OFF values
         if command == 22:
-            auto_arg = HCALORY_POWER_AUTO_ON if argument == 1 else HCALORY_POWER_AUTO_OFF
             return self._build_hcalory_cmd(
                 HCALORY_CMD_POWER,
-                bytes([0, 0, 0, 0, 0, 0, 0, 0, auto_arg])
+                bytes([0, 0, 0, 0, 0, 0, 0, 0, HCALORY_POWER_AUTO_TOGGLE])
             )
 
         # Set temperature unit (cmd 15)
@@ -1560,29 +1560,29 @@ class ProtocolHcalory(HeaterProtocol):
             bytes([0, 0, 0, 0, 0, 0, 0, 0, HCALORY_POWER_VENTILATION])
         )
 
-    def enable_auto_start_stop(self) -> bytearray:
-        """Enable automatic start/stop feature.
+    def toggle_auto_start_stop(self) -> bytearray:
+        """Toggle automatic start/stop feature.
+
+        Auto start/stop is a toggle command (0x05) — the heater flips
+        its current state internally. (@Xev analysis, issue #43)
 
         Returns:
-            Command packet to enable auto start/stop
+            Command packet to toggle auto start/stop
         """
-        from .const import HCALORY_CMD_POWER, HCALORY_POWER_AUTO_ENABLE
+        from .const import HCALORY_CMD_POWER, HCALORY_POWER_AUTO_TOGGLE
         return self._build_hcalory_cmd(
             HCALORY_CMD_POWER,
-            bytes([0, 0, 0, 0, 0, 0, 0, 0, HCALORY_POWER_AUTO_ENABLE])
+            bytes([0, 0, 0, 0, 0, 0, 0, 0, HCALORY_POWER_AUTO_TOGGLE])
         )
+
+    # Keep aliases for backwards compatibility
+    def enable_auto_start_stop(self) -> bytearray:
+        """Enable auto start/stop (sends toggle command)."""
+        return self.toggle_auto_start_stop()
 
     def disable_auto_start_stop(self) -> bytearray:
-        """Disable automatic start/stop feature.
-
-        Returns:
-            Command packet to disable auto start/stop
-        """
-        from .const import HCALORY_CMD_POWER, HCALORY_POWER_AUTO_DISABLE
-        return self._build_hcalory_cmd(
-            HCALORY_CMD_POWER,
-            bytes([0, 0, 0, 0, 0, 0, 0, 0, HCALORY_POWER_AUTO_DISABLE])
-        )
+        """Disable auto start/stop (sends toggle command)."""
+        return self.toggle_auto_start_stop()
 
     def set_temperature_unit_celsius(self) -> bytearray:
         """Set temperature display unit to Celsius.

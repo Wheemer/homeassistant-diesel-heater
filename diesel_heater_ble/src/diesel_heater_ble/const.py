@@ -228,10 +228,12 @@ HCALORY_CMD_PASSWORD: Final = 0x0A0C  # MVP2 password handshake (dpID 0A0C)
 HCALORY_POWER_QUERY: Final = 0x00
 HCALORY_POWER_OFF: Final = 0x01  # Fixed: was 0x02 (swapped with ON)
 HCALORY_POWER_ON: Final = 0x02  # Fixed: was 0x01 (swapped with OFF)
-HCALORY_POWER_AUTO_ON: Final = 0x05  # Fixed: was 0x03 (@Xev btsnoop, issue #43)
-HCALORY_POWER_AUTO_OFF: Final = 0x06  # Fixed: was 0x04 (@Xev btsnoop, issue #43)
-HCALORY_POWER_AUTO_ENABLE: Final = HCALORY_POWER_AUTO_ON  # Alias for dedicated methods
-HCALORY_POWER_AUTO_DISABLE: Final = HCALORY_POWER_AUTO_OFF  # Alias for dedicated methods
+HCALORY_POWER_AUTO_TOGGLE: Final = 0x05  # Toggle auto start/stop (@Xev, issue #43)
+# Keep aliases for backwards compatibility with dedicated methods
+HCALORY_POWER_AUTO_ON: Final = HCALORY_POWER_AUTO_TOGGLE
+HCALORY_POWER_AUTO_OFF: Final = HCALORY_POWER_AUTO_TOGGLE
+HCALORY_POWER_AUTO_ENABLE: Final = HCALORY_POWER_AUTO_TOGGLE
+HCALORY_POWER_AUTO_DISABLE: Final = HCALORY_POWER_AUTO_TOGGLE
 HCALORY_POWER_MODE_LEVEL: Final = 0x07  # Switch to Level mode (@Xev btsnoop, issue #43)
 HCALORY_POWER_MODE_TEMP: Final = 0x06  # Switch to Temperature mode (@Xev btsnoop, issue #43)
 HCALORY_POWER_VENTILATION: Final = 0x08  # Ventilation/fan-only mode (unverified, needs btsnoop)
