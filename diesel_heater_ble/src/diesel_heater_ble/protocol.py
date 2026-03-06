@@ -1279,9 +1279,10 @@ class ProtocolHcalory(HeaterProtocol):
                 bytes([level])
             )
 
-        # Set auto start/stop (custom: cmd 22) — toggle command (@Xev, issue #43)
+        # Set auto start/stop — toggle command (@Xev, issue #43)
         # Auto start/stop is a TOGGLE (0x05), not separate ON/OFF values
-        if command == 22:
+        # cmd 18 = coordinator standard, cmd 22 = legacy/custom
+        if command in (18, 22):
             return self._build_hcalory_cmd(
                 HCALORY_CMD_POWER,
                 bytes([0, 0, 0, 0, 0, 0, 0, 0, HCALORY_POWER_AUTO_TOGGLE])
