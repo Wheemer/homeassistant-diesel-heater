@@ -1305,51 +1305,75 @@ class TestProtocolCBFF:
         assert len(pkt) == 9
 
     def test_feaa_status_request(self):
-        """FEAA status request uses cmd_1=0x80, cmd_2=0x00."""
+        """FEAA status request uses cmd_1=0x00, cmd_2=0x00."""
         pkt = self.proto.build_command(0, 0, 1234)
         assert pkt[0:2] == bytes([0xFE, 0xAA])
-        assert pkt[6] == 0x80  # cmd_1 = status request
+        assert pkt[6] == 0x00  # cmd_1 = status request
         assert pkt[7] == 0x00  # cmd_2 = read
-        # Verify checksum (sum of all bytes except last)
+        assert len(pkt) == 9   # 9-byte status query
         assert pkt[-1] == sum(pkt[:-1]) & 0xFF
 
     def test_feaa_power_on(self):
-        """FEAA power on uses cmd_1=0x81, cmd_2=0x03, payload=1."""
+        """FEAA power on uses cmd_1=0x01, cmd_2=0x01, payload=[mode, param, time]."""
         pkt = self.proto.build_command(3, 1, 1234)  # cmd 3, arg 1 = power on
         assert pkt[0:2] == bytes([0xFE, 0xAA])
-        assert pkt[6] == 0x81  # cmd_1 = set power
-        assert pkt[7] == 0x03  # cmd_2 = command with payload
-        assert pkt[8] == 1    # payload = on
+        assert pkt[6] == 0x01  # cmd_1 = control
+        assert pkt[7] == 0x01  # cmd_2 = set with payload
+        assert pkt[8] == 1    # mode = level
+        assert pkt[9] == 5    # default level
+        assert pkt[10] == 0xFF  # time MSB
+        assert pkt[11] == 0xFF  # time LSB
         assert pkt[-1] == sum(pkt[:-1]) & 0xFF
 
     def test_feaa_power_off(self):
-        """FEAA power off uses cmd_1=0x81, cmd_2=0x03, payload=0."""
+        """FEAA power off uses cmd_1=0x01, cmd_2=0x00."""
         pkt = self.proto.build_command(3, 0, 1234)  # cmd 3, arg 0 = power off
         assert pkt[0:2] == bytes([0xFE, 0xAA])
-        assert pkt[6] == 0x81  # cmd_1 = set power
-        assert pkt[7] == 0x03  # cmd_2 = command with payload
-        assert pkt[8] == 0    # payload = off
+        assert pkt[6] == 0x01  # cmd_1 = control
+        assert pkt[7] == 0x00  # cmd_2 = off
+        assert len(pkt) == 9   # 9-byte packet (no payload)
         assert pkt[-1] == sum(pkt[:-1]) & 0xFF
 
     def test_feaa_set_temperature(self):
-        """FEAA set temperature uses cmd_1=0x81, cmd_2=0x03, payload=[mode, temp]."""
+        """FEAA set temperature uses cmd_1=0x01, cmd_2=0x01, payload=[2, temp, 0xFF, 0xFF]."""
         pkt = self.proto.build_command(4, 25, 1234)  # cmd 4, arg 25 = set temp 25C
         assert pkt[0:2] == bytes([0xFE, 0xAA])
-        assert pkt[6] == 0x81  # cmd_1 = control command
-        assert pkt[7] == 0x03  # cmd_2 = command with payload
+        assert pkt[6] == 0x01  # cmd_1 = control
+        assert pkt[7] == 0x01  # cmd_2 = set with payload
         assert pkt[8] == 2    # running_mode = temperature mode
         assert pkt[9] == 25   # temperature
+        assert pkt[10] == 0xFF  # time
+        assert pkt[11] == 0xFF  # time
         assert pkt[-1] == sum(pkt[:-1]) & 0xFF
 
     def test_feaa_set_level(self):
-        """FEAA set level uses cmd_1=0x81, cmd_2=0x03, payload=[mode, level]."""
+        """FEAA set level uses cmd_1=0x01, cmd_2=0x01, payload=[1, level, 0xFF, 0xFF]."""
         pkt = self.proto.build_command(5, 5, 1234)  # cmd 5, arg 5 = set level 5
         assert pkt[0:2] == bytes([0xFE, 0xAA])
-        assert pkt[6] == 0x81  # cmd_1 = control command
-        assert pkt[7] == 0x03  # cmd_2 = command with payload
+        assert pkt[6] == 0x01  # cmd_1 = control
+        assert pkt[7] == 0x01  # cmd_2 = set with payload
         assert pkt[8] == 1    # running_mode = level mode
         assert pkt[9] == 5    # level
+        assert pkt[10] == 0xFF  # time
+        assert pkt[11] == 0xFF  # time
         assert pkt[-1] == sum(pkt[:-1]) & 0xFF
+
+    def test_feaa_status_encrypted_matches_btsnoop(self):
+        """Encrypted status query must match @BradleyDeLar btsnoop capture."""
+        proto = ProtocolCBFF()
+        proto.set_device_sn("DC32623528D3")
+        pkt = proto.build_command(0, 0, 1234)
+        expected = bytes.fromhex("ca884041485d4151c2")
+        assert pkt == bytearray(expected)
+
+    def test_feaa_set_level_encrypted_matches_btsnoop(self):
+        """Encrypted set level 10 must match @BradleyDeLar btsnoop capture."""
+        proto = ProtocolCBFF()
+        proto.set_device_sn("DC32623528D3")
+        pkt = proto.build_command(5, 10, 1234)  # level 10
+        # Decrypted: fe aa 00 00 0d 00 01 01 01 0a ff ff c0
+        expected = bytes.fromhex("ca8840414c5d405072008ffcbd")
+        assert pkt == bytearray(expected)
 
     def test_feaa_config_fallback_to_aa55(self):
         """FEAA config commands fall back to AA55 for compatibility."""

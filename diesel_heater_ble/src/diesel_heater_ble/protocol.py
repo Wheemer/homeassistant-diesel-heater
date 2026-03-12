@@ -775,7 +775,7 @@ class ProtocolCBFF(HeaterProtocol):
         """
         # PIN encoding: e.g., 1234 -> [34, 12]
         payload = bytes([passkey % 100, passkey // 100])
-        packet = self._build_feaa(cmd_1=0x86, cmd_2=0x00, payload=payload)
+        packet = self._build_feaa(cmd_1=0x06, cmd_2=0x00, payload=payload)
 
         # Handshake is always encrypted in V2.1
         if self._device_sn:
@@ -785,54 +785,45 @@ class ProtocolCBFF(HeaterProtocol):
     def build_command(self, command: int, argument: int, passkey: int) -> bytearray:
         """Build FEAA command packet for CBFF/Sunster heaters.
 
-        Command mapping:
-        - cmd 0: Status request (FEAA cmd_1=0x80, cmd_2=0x00)
-        - cmd 1: Status request (same as 0)
-        - cmd 3: Power on/off (FEAA cmd_1=0x81, cmd_2=0x03, payload=arg)
-        - cmd 4: Set temperature (FEAA cmd_1=0x81, cmd_2=0x03, payload=[2, temp])
-        - cmd 5: Set level (FEAA cmd_1=0x81, cmd_2=0x03, payload=[1, level])
+        Command mapping (FEAA protocol, @Xev btsnoop analysis):
+        - cmd 0/1: Status request (cmd_1=0x00, cmd_2=0x00)
+        - cmd 2: Set mode (cmd_1=0x01, cmd_2=0x02)
+        - cmd 3: Power on/off (cmd_1=0x01, cmd_2=0x01 on / cmd_2=0x00 off)
+        - cmd 4: Set temperature (cmd_1=0x01, cmd_2=0x01, payload=[2, temp, 0xFF, 0xFF])
+        - cmd 5: Set level (cmd_1=0x01, cmd_2=0x01, payload=[1, level, 0xFF, 0xFF])
         - cmd 14-21: Config commands (use AA55 fallback for compatibility)
 
-        In V2.1 mode, commands are encrypted with double-XOR before sending.
+        All commands are encrypted with double-XOR when device_sn is available.
         """
         # Status request
         if command in (0, 1):
-            packet = self._build_feaa(cmd_1=0x80, cmd_2=0x00)
+            packet = self._build_feaa(cmd_1=0x00, cmd_2=0x00)
 
         # Power on/off (cmd 3: argument=1 for on, 0 for off)
         elif command == 3:
-            # V2.1: Power ON needs mode+param+time, OFF is simpler
-            if self._v21_mode and argument == 1:
-                # Power ON with default settings: mode=1 (level), param=5, time=0xFFFF (infinite)
+            if argument == 1:
+                # Power ON: mode=1 (level), param=5 (default), time=0xFFFF (infinite)
                 payload = bytes([1, 5, 0xFF, 0xFF])
-                packet = self._build_feaa(cmd_1=0x81, cmd_2=0x01, payload=payload)
-            elif self._v21_mode and argument == 0:
-                # Power OFF: 9-byte packet (no payload needed)
-                packet = self._build_feaa(cmd_1=0x81, cmd_2=0x00)
+                packet = self._build_feaa(cmd_1=0x01, cmd_2=0x01, payload=payload)
             else:
-                packet = self._build_feaa(cmd_1=0x81, cmd_2=0x03, payload=bytes([argument]))
+                # Power OFF
+                packet = self._build_feaa(cmd_1=0x01, cmd_2=0x00)
 
         # Set temperature (cmd 4)
         elif command == 4:
-            if self._v21_mode:
-                # V2.1: mode=2 (temp), param=temp, time=0xFFFF
-                payload = bytes([2, argument, 0xFF, 0xFF])
-                packet = self._build_feaa(cmd_1=0x81, cmd_2=0x01, payload=payload)
-            else:
-                packet = self._build_feaa(cmd_1=0x81, cmd_2=0x03, payload=bytes([2, argument]))
+            # mode=2 (temp), param=temp, time=0xFFFF
+            payload = bytes([2, argument, 0xFF, 0xFF])
+            packet = self._build_feaa(cmd_1=0x01, cmd_2=0x01, payload=payload)
 
         # Set level (cmd 5)
         elif command == 5:
-            if self._v21_mode:
-                # V2.1: mode=1 (level), param=level, time=0xFFFF
-                payload = bytes([1, argument, 0xFF, 0xFF])
-                packet = self._build_feaa(cmd_1=0x81, cmd_2=0x01, payload=payload)
-            else:
-                packet = self._build_feaa(cmd_1=0x81, cmd_2=0x03, payload=bytes([1, argument]))
+            # mode=1 (level), param=level, time=0xFFFF
+            payload = bytes([1, argument, 0xFF, 0xFF])
+            packet = self._build_feaa(cmd_1=0x01, cmd_2=0x01, payload=payload)
 
         # Set mode (cmd 2)
         elif command == 2:
-            packet = self._build_feaa(cmd_1=0x81, cmd_2=0x02)
+            packet = self._build_feaa(cmd_1=0x01, cmd_2=0x02)
 
         # Config commands (14-21): Fall back to AA55 for now
         elif command in (14, 15, 16, 17, 19, 20, 21):
@@ -840,10 +831,10 @@ class ProtocolCBFF(HeaterProtocol):
 
         # Default: status request
         else:
-            packet = self._build_feaa(cmd_1=0x80, cmd_2=0x00)
+            packet = self._build_feaa(cmd_1=0x00, cmd_2=0x00)
 
-        # Encrypt if V2.1 mode is enabled
-        if self._v21_mode and self._device_sn:
+        # Always encrypt when device_sn is available
+        if self._device_sn:
             return self._encrypt_cbff(packet, self._device_sn)
         return packet
 

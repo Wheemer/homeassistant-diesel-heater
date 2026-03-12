@@ -1978,18 +1978,18 @@ class VevorHeaterCoordinator(DataUpdateCoordinator):
         """
         level = max(1, min(10, level))
 
-        # Hcalory uses command 5 for level (HCALORY_CMD_SET_GEAR)
-        # Other protocols use command 4 (distinguishes level vs temp by argument value)
-        if self._protocol_mode == 7:  # Hcalory
+        # CBFF and Hcalory use SEPARATE commands: cmd 5 for level, cmd 4 for temperature
+        # AAXX protocols use SAME command (cmd 4) for both level and temperature
+        if self._protocol_mode in (6, 7):  # CBFF or Hcalory
             command = 5
             self._logger.info(
-                "🔢 SET LEVEL REQUEST: level=%d, protocol=Hcalory (cmd=5)",
-                level
+                "SET LEVEL REQUEST: level=%d, protocol=%d (cmd=5)",
+                level, self._protocol_mode
             )
-        else:  # AAXX, ABBA, CBFF
+        else:  # AAXX, ABBA
             command = 4
             self._logger.info(
-                "🔢 SET LEVEL REQUEST: level=%d, protocol=%d (cmd=4)",
+                "SET LEVEL REQUEST: level=%d, protocol=%d (cmd=4)",
                 level, self._protocol_mode
             )
 
