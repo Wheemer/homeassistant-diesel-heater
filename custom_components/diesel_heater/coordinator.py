@@ -60,8 +60,6 @@ from .const import (
     SENSOR_TEMP_MIN,
     SERVICE_UUID,
     SERVICE_UUID_ALT,
-    SUNSTER_NOTIFY_UUID,
-    SUNSTER_WRITE_UUID,
     STORAGE_KEY_AUTO_OFFSET_ENABLED,
     STORAGE_KEY_FUEL_SINCE_RESET,
     STORAGE_KEY_LAST_REFUELED,
@@ -149,8 +147,6 @@ class VevorHeaterCoordinator(DataUpdateCoordinator):
         self._is_abba_device = False  # True if using ABBA/HeaterCC protocol
         self._abba_write_char = None  # ABBA devices use separate write characteristic
         self._v21_handshake_sent = False  # Track if Sunster V2.1 handshake was sent
-        self._sunster_write_char = None  # Sunster V2.1 ffe3 write characteristic
-        self._sunster_notify_char = None  # Sunster V2.1 ffe4 notify characteristic
         self._is_hcalory_device = False  # True if using Hcalory MVP1/MVP2 protocol
         self._hcalory_write_char = None  # Hcalory devices use separate write characteristic
         # Hcalory returns set_value=None when heater is OFF (@Xev's discovery, issue #34)
@@ -1162,8 +1158,6 @@ class VevorHeaterCoordinator(DataUpdateCoordinator):
             self._active_char_uuid = None
             self._is_abba_device = False
             self._abba_write_char = None
-            self._sunster_write_char = None
-            self._sunster_notify_char = None
             self._is_hcalory_device = False
             self._hcalory_write_char = None
 
@@ -1259,17 +1253,6 @@ class VevorHeaterCoordinator(DataUpdateCoordinator):
                                     self._logger.info(
                                         "✅ Found Vevor heater characteristic: %s (service: %s)",
                                         char_uuid, service_uuid
-                                    )
-                                # Also discover Sunster V2.1 alternate characteristics
-                                if char.uuid.lower() == SUNSTER_WRITE_UUID.lower():
-                                    self._sunster_write_char = char
-                                    self._logger.info(
-                                        "✅ Found Sunster write characteristic: %s", char.uuid
-                                    )
-                                if char.uuid.lower() == SUNSTER_NOTIFY_UUID.lower():
-                                    self._sunster_notify_char = char
-                                    self._logger.info(
-                                        "✅ Found Sunster notify characteristic: %s", char.uuid
                                     )
                             if self._characteristic:
                                 break
@@ -1404,18 +1387,6 @@ class VevorHeaterCoordinator(DataUpdateCoordinator):
                     )
                     self._protocol_mode = 6
                     self._protocol = cbff_protocol
-                # Switch to ffe3/ffe4 if available (some Sunster models need this)
-                if self._sunster_write_char and self._sunster_notify_char:
-                    if self._active_char_uuid != SUNSTER_NOTIFY_UUID:
-                        self._logger.info(
-                            "🔄 Switching to Sunster V2.1 characteristics: "
-                            "write=ffe3, notify=ffe4"
-                        )
-                        # Use create_task since we're in a sync callback
-                        asyncio.create_task(
-                            self._switch_sunster_notifications()
-                        )
-
                 # Send V2.1 handshake if not yet sent (required before commands)
                 if not self._v21_handshake_sent and hasattr(cbff_protocol, 'build_handshake'):
                     self._logger.info(
@@ -1725,22 +1696,6 @@ class VevorHeaterCoordinator(DataUpdateCoordinator):
         self._logger.error("❌ MVP2 password handshake failed after %d attempts", max_retries)
         return False
 
-    async def _switch_sunster_notifications(self) -> None:
-        """Switch BLE notifications from ffe1 to ffe4 for Sunster V2.1 devices."""
-        try:
-            if self._client and self._active_char_uuid:
-                await self._client.stop_notify(self._active_char_uuid)
-            await self._client.start_notify(
-                SUNSTER_NOTIFY_UUID,
-                self._notification_callback,
-            )
-            self._active_char_uuid = SUNSTER_NOTIFY_UUID
-            self._logger.info("✅ Switched notifications to ffe4")
-        except Exception as err:
-            self._logger.warning(
-                "⚠️ Failed to switch to ffe4 notifications: %s", err
-            )
-
     async def _send_v21_handshake(self, packet: bytearray) -> None:
         """Send Sunster V2.1 handshake packet asynchronously."""
         try:
@@ -1768,10 +1723,6 @@ class VevorHeaterCoordinator(DataUpdateCoordinator):
             write_char = self._abba_write_char
             char_uuid = write_char.uuid
             protocol_name = "ABBA"
-        elif self._protocol_mode == 6 and self._sunster_write_char:
-            write_char = self._sunster_write_char
-            char_uuid = write_char.uuid
-            protocol_name = "Sunster V2.1"
         else:
             write_char = self._characteristic
             char_uuid = write_char.uuid if write_char else "unknown"

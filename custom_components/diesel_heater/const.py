@@ -63,11 +63,6 @@ SERVICE_UUID: Final = "0000ffe0-0000-1000-8000-00805f9b34fb"
 CHARACTERISTIC_UUID: Final = "0000ffe1-0000-1000-8000-00805f9b34fb"
 NOTIFY_UUID: Final = "0000ffe2-0000-1000-8000-00805f9b34fb"
 
-# Sunster V2.1 alternate characteristics (ffe3 write, ffe4 notify)
-# Some Sunster models use ffe3/ffe4 instead of ffe1 for write/notify
-SUNSTER_WRITE_UUID: Final = "0000ffe3-0000-1000-8000-00805f9b34fb"
-SUNSTER_NOTIFY_UUID: Final = "0000ffe4-0000-1000-8000-00805f9b34fb"
-
 # Alternative UUIDs (fff0 variant)
 SERVICE_UUID_ALT: Final = "0000fff0-0000-1000-8000-00805f9b34fb"
 CHARACTERISTIC_UUID_ALT: Final = "0000fff1-0000-1000-8000-00805f9b34fb"
