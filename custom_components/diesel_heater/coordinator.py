@@ -1328,6 +1328,13 @@ class VevorHeaterCoordinator(DataUpdateCoordinator):
         if self._is_hcalory_device or header == 0x0002:
             return self._protocols[7], data
 
+        # CBFF/FEAA protocol - if already in mode 6 (set by AA77 beacon),
+        # route all data to CBFF protocol. The encrypted header varies by MAC
+        # (e.g. 0xCBFF, 0xCA88) so we cannot match on raw bytes.
+        # The CBFF protocol.parse() handles decryption internally.
+        if self._protocol_mode == 6:
+            return self._protocols[6], data
+
         if header == PROTOCOL_HEADER_CBFF:
             return self._protocols[6], data
 
