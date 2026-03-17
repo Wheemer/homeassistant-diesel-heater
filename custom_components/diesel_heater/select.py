@@ -303,13 +303,18 @@ class VevorHeaterTankVolumeSelect(SelectEntity):
 
     @property
     def current_option(self) -> str | None:
-        """Return the current tank volume."""
+        """Return the current tank volume based on physical sensor."""
+        external_fuel = self.hass.states.get("sensor.diesel_volume")
+        if external_fuel and external_fuel.state not in ("unknown", "unavailable"):
+            try:
+                return f"{float(external_fuel.state)} L"
+            except (ValueError, TypeError):
+                pass
+
         tank_volume = self.coordinator.data.get("tank_volume")
         if tank_volume is not None:
-            # Return exact match or closest option
             if tank_volume in TANK_VOLUME_OPTIONS:
                 return TANK_VOLUME_OPTIONS[tank_volume]
-            # If not an exact match, show the raw value
             return f"{tank_volume} L"
         return None
 
