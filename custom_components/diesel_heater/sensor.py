@@ -420,27 +420,24 @@ class VevorDailyFuelHistorySensor(VevorSensorBase):
 
     @property
     def extra_state_attributes(self) -> dict[str, any]:
-        """Return the state attributes with daily consumption history."""
-        history = self.coordinator.data.get("daily_fuel_history", {})
-
-        if not history:
-            return {
-                "history": {},
-                "days_tracked": 0,
-                "total_in_history": 0.0,
-            }
-
-        # Sort history by date (newest first)
-        sorted_history = dict(sorted(history.items(), reverse=True))
+        """Return the state attributes."""
+        tank_capacity = float(self.coordinator.config_entry.options.get("tank_capacity", 5.0))
+        
+        # Use physical sensor for all math
+        external_fuel = self.hass.states.get("sensor.diesel_volume")
+        if external_fuel and external_fuel.state not in ("unknown", "unavailable"):
+            try:
+                remaining = float(external_fuel.state)
+            except (ValueError, TypeError):
+                remaining = self.coordinator.data.get("fuel_remaining", 0)
+        else:
+            remaining = self.coordinator.data.get("fuel_remaining", 0)
 
         return {
-            "history": sorted_history,
-            "days_tracked": len(sorted_history),
-            "total_in_history": round(sum(sorted_history.values()), 2),
-            "last_7_days": round(
-                sum(v for k, v in list(sorted_history.items())[:7]), 2
-            ),
-            "last_30_days": round(sum(sorted_history.values()), 2),
+            "tank_capacity": tank_capacity,
+            "fuel_remaining": remaining,
+            "fuel_consumed_since_reset": round(max(0, tank_capacity - remaining), 2),
+            "fuel_percentage": round((remaining / tank_capacity) * 100, 1) if tank_capacity > 0 else 0,
         }
 
 
