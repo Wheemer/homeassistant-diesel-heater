@@ -546,6 +546,16 @@ class VevorFuelRemainingSensor(VevorSensorBase):
     @property
     def native_value(self) -> float | None:
         """Return the state."""
+# Check for your physical diesel sensor in Home Assistant
+        external_fuel = self.hass.states.get("sensor.diesel_volume")
+        
+        if external_fuel and external_fuel.state not in ("unknown", "unavailable"):
+            try:
+                return float(external_fuel.state)
+            except (ValueError, TypeError):
+                pass
+
+        # Fallback to calculated data if physical sensor is invalid
         return self.coordinator.data.get("fuel_remaining")
 
     @property
@@ -553,7 +563,15 @@ class VevorFuelRemainingSensor(VevorSensorBase):
         """Return additional attributes."""
         tank_capacity = self.coordinator.data.get("tank_capacity")
         consumed = self.coordinator.data.get("fuel_consumed_since_reset", 0.0)
-        remaining = self.coordinator.data.get("fuel_remaining")
+# Use your physical sensor for attribute calculations
+        external_fuel = self.hass.states.get("sensor.diesel_volume")
+        if external_fuel and external_fuel.state not in ("unknown", "unavailable"):
+            try:
+                remaining = float(external_fuel.state)
+            except (ValueError, TypeError):
+                remaining = self.coordinator.data.get("fuel_remaining")
+        else:
+            remaining = self.coordinator.data.get("fuel_remaining")
 
         attrs = {
             "fuel_consumed_since_reset": round(consumed, 2),
