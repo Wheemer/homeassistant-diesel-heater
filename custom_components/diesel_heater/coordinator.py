@@ -317,21 +317,6 @@ class VevorHeaterCoordinator(DataUpdateCoordinator):
                     len(self._daily_runtime_history)
                 )
 
-                # Load fuel level tracking
-                self._fuel_consumed_since_reset = data.get(STORAGE_KEY_FUEL_SINCE_RESET, 0.0)
-                self.data["fuel_consumed_since_reset"] = round(self._fuel_consumed_since_reset, 2)
-                tank_capacity = data.get(STORAGE_KEY_TANK_CAPACITY)
-                if tank_capacity is not None:
-                    self.data["tank_capacity"] = tank_capacity
-                last_refueled = data.get(STORAGE_KEY_LAST_REFUELED)
-                if last_refueled is not None:
-                    self.data["last_refueled"] = last_refueled
-                self._update_fuel_remaining()
-                self._logger.debug(
-                    "Loaded fuel level data: consumed_since_reset=%.2fL, tank_capacity=%s, last_refueled=%s",
-                    self._fuel_consumed_since_reset, self.data.get("tank_capacity"), self.data.get("last_refueled")
-                )
-
                 # Load auto offset enabled state
                 auto_offset_enabled = data.get(STORAGE_KEY_AUTO_OFFSET_ENABLED, False)
                 self.data["auto_offset_enabled"] = auto_offset_enabled
