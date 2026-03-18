@@ -192,11 +192,6 @@ class VevorHeaterCoordinator(DataUpdateCoordinator):
             # Runtime tracking
             "daily_runtime_hours": 0.0,
             "total_runtime_hours": 0.0,
-            # Fuel level tracking
-            "tank_capacity": None,  # User-defined tank capacity in liters (1-100)
-            "fuel_remaining": None,
-            "fuel_consumed_since_reset": 0.0,
-            "last_refueled": None,  # ISO timestamp of last refuel reset
         }
 
         # Fuel consumption tracking (minimal)
