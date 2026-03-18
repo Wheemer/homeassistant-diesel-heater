@@ -59,31 +59,3 @@ class VevorTimeSyncButton(CoordinatorEntity[VevorHeaterCoordinator], ButtonEntit
     async def async_press(self) -> None:
         """Handle the button press."""
         await self.coordinator.async_sync_time()
-
-
-class VevorResetFuelLevelButton(CoordinatorEntity[VevorHeaterCoordinator], ButtonEntity):
-    """Button to reset estimated fuel remaining after refueling.
-
-    Resets the fuel consumed counter so the estimated fuel remaining
-    sensor starts counting down from the full tank capacity again.
-    """
-
-    _attr_has_entity_name = True
-    _attr_name = "Reset Estimated Fuel Remaining"
-    _attr_icon = "mdi:gas-station"
-    _attr_entity_category = EntityCategory.CONFIG
-
-    def __init__(self, coordinator: VevorHeaterCoordinator) -> None:
-        """Initialize the button."""
-        super().__init__(coordinator)
-        self._attr_unique_id = f"{coordinator.address}_reset_est_fuel_remaining"
-        self._attr_device_info = {
-            "identifiers": {(DOMAIN, coordinator.address)},
-            "name": "Vevor Diesel Heater",
-            "manufacturer": "Vevor",
-            "model": "Diesel Heater",
-        }
-
-    async def async_press(self) -> None:
-        """Handle the button press."""
-        await self.coordinator.async_reset_fuel_level()
