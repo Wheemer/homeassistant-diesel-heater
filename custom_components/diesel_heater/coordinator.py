@@ -785,36 +785,6 @@ class VevorHeaterCoordinator(DataUpdateCoordinator):
         self.data["fuel_consumed_since_reset"] = round(self._fuel_consumed_since_reset, 2)
         self._update_fuel_remaining()
 
-    def _update_fuel_remaining(self) -> None:
-        """Update estimated fuel remaining based on tank capacity and consumption since reset."""
-        tank_capacity = self.data.get("tank_capacity")
-        if tank_capacity is None or tank_capacity <= 0:
-            # Tank capacity not set — can't estimate
-            self.data["fuel_remaining"] = None
-            return
-
-        remaining = tank_capacity - self._fuel_consumed_since_reset
-        self.data["fuel_remaining"] = round(max(0.0, remaining), 2)
-
-    async def async_reset_fuel_level(self) -> None:
-        """Reset fuel level tracking (called when user refuels)."""
-        self._fuel_consumed_since_reset = 0.0
-        self.data["fuel_consumed_since_reset"] = 0.0
-        self.data["last_refueled"] = dt_util.now().isoformat()
-        self._update_fuel_remaining()
-        await self.async_save_data()
-        self._logger.info("⛽ Fuel level reset (tank refueled at %s)", self.data["last_refueled"])
-        self.async_set_updated_data(self.data)
-
-    async def async_set_tank_capacity(self, capacity: int) -> None:
-        """Set the user-defined tank capacity in liters (1-100)."""
-        capacity = max(1, min(100, capacity))
-        self.data["tank_capacity"] = capacity
-        self._update_fuel_remaining()
-        await self.async_save_data()
-        self._logger.info("⛽ Tank capacity set to %dL", capacity)
-        self.async_set_updated_data(self.data)
-
     def _update_runtime_tracking(self, elapsed_seconds: float) -> None:
         """Update runtime tracking."""
         # Only count runtime when heater is actually running
