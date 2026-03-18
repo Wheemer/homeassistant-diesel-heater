@@ -783,7 +783,6 @@ class VevorHeaterCoordinator(DataUpdateCoordinator):
         self.data["daily_fuel_consumed"] = round(self._daily_fuel_consumed, 2)
         self.data["total_fuel_consumed"] = round(self._total_fuel_consumed, 2)
         self.data["fuel_consumed_since_reset"] = round(self._fuel_consumed_since_reset, 2)
-        self._update_fuel_remaining()
 
     def _update_runtime_tracking(self, elapsed_seconds: float) -> None:
         """Update runtime tracking."""
