@@ -820,43 +820,6 @@ class VevorHeaterCoordinator(DataUpdateCoordinator):
         self._logger.info("⛽ Tank capacity set to %dL", capacity)
         self.async_set_updated_data(self.data)
 
-    async def async_set_current_fuel_level(self, current_level: float) -> None:
-        """Set the current fuel level manually (for partial refills).
-
-        Updates the internal fuel consumed counter to reflect the new level.
-        Useful when adding fuel without completely filling the tank.
-
-        Feature requested by @Wheemer in issue #38.
-
-        Args:
-            current_level: Current fuel level in liters (0 to tank_capacity)
-        """
-        capacity = self.data.get("tank_capacity", 0)
-        if capacity == 0:
-            self._logger.warning("Cannot set fuel level: tank capacity not configured")
-            return
-
-        # Clamp value between 0 and capacity
-        current_level = max(0, min(capacity, current_level))
-
-        # Calculate new consumed: capacity - current_level
-        new_consumed = capacity - current_level
-
-        # Update internal counter
-        self._total_fuel_consumed = new_consumed
-
-        # Recalculate estimated remaining
-        self._update_fuel_remaining()
-
-        # Save to persistent storage
-        await self.async_save_data()
-
-        self._logger.info(
-            "⛽ Manual fuel level set to %.1fL (consumed: %.2fL)",
-            current_level, new_consumed
-        )
-        self.async_set_updated_data(self.data)
-
     def _update_runtime_tracking(self, elapsed_seconds: float) -> None:
         """Update runtime tracking."""
         # Only count runtime when heater is actually running
