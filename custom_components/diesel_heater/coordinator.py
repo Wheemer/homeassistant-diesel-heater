@@ -728,7 +728,32 @@ class VevorHeaterCoordinator(DataUpdateCoordinator):
         if power_level is None:
             power_level = 1  # Fallback to minimum
 
-        consumption_rate = FUEL_CONSUMPTION_TABLE.get(power_level, 0.16)  # L/h
+# 1. Get current volume from the physical sensor
+        vol_state = self.hass.states.get("sensor.diesel_volume")
+        
+        if vol_state and vol_state.state not in ["unknown", "unavailable"]:
+            current_vol = float(vol_state.state)
+            
+            # 2. Initialize baseline if first run
+            if not hasattr(self, "_last_vol_reading"):
+                self._last_vol_reading = current_vol
+
+            # 3. Calculate the actual drop
+            fuel_dropped = self._last_vol_reading - current_vol
+            
+            # 4. If fuel dropped (and isn't a refill spike), update the total
+            if 0 < fuel_dropped < 0.5: 
+                self._total_fuel_consumed += fuel_dropped
+            
+            # 5. Calculate discovered L/h (Consumption Rate)
+            # Use a 10-second window or similar to smooth the math
+            self._last_vol_reading = current_vol
+            
+            # This replaces your old 'consumption_rate' variable
+            consumption_rate = fuel_dropped * 3600  # Converts drop-per-update to L/h
+        else:
+            # Fallback to the table only if the sensor is dead
+            consumption_rate = FUEL_CONSUMPTION_TABLE.get(power_level, 0.16)
 
         # Calculate fuel consumed in this interval
         hours_elapsed = elapsed_seconds / 3600.0
