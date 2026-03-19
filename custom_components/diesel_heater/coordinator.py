@@ -762,24 +762,24 @@ class VevorHeaterCoordinator(DataUpdateCoordinator):
         return fuel_consumed
 
 def _update_fuel_tracking(self, elapsed_seconds):
-        # 1. Get real volume from your physical sensor
+        # 1. Get volume from your physical sensor
         vol_sensor = self.hass.states.get("sensor.diesel_volume")
         
         if vol_sensor and vol_sensor.state not in ["unknown", "unavailable"]:
             current_vol = float(vol_sensor.state)
             
-            # 2. Initialize baseline on first run
+            # 2. Initialize baseline on the first run
             if not hasattr(self, "_last_vol_reading"):
                 self._last_vol_reading = current_vol
 
             # 3. Calculate actual drop
             fuel_dropped = self._last_vol_reading - current_vol
             
-            # 4. If fuel dropped (and isn't a refill spike), add to total
+            # 4. If fuel dropped (ignores refills/noise), update total
             if 0 < fuel_dropped < 0.5: 
-                self._total_fuel_consumed += fuel_dropped
+                self.data["total_fuel_consumed"] += fuel_dropped
                 
-                # 5. DISCOVERED RATE: Calculate L/h based on actual drop
+                # 5. DISCOVERY: Calculate real-time L/h based on sensor drop
                 if elapsed_seconds > 0:
                     self.data["consumption_rate"] = (fuel_dropped / elapsed_seconds) * 3600
             
