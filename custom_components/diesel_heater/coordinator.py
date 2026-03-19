@@ -761,38 +761,29 @@ class VevorHeaterCoordinator(DataUpdateCoordinator):
 
         return fuel_consumed
 
-    def _update_fuel_tracking(self, elapsed_seconds: float) -> None:
-        """Update fuel consumption tracking."""
-        fuel_consumed = self._calculate_fuel_consumption(elapsed_seconds)
+def _update_fuel_tracking(self, elapsed_seconds):
+        # 1. Get real volume from your physical sensor
+        vol_sensor = self.hass.states.get("sensor.diesel_volume")
+        
+        if vol_sensor and vol_sensor.state not in ["unknown", "unavailable"]:
+            current_vol = float(vol_sensor.state)
+            
+            # 2. Initialize baseline on first run
+            if not hasattr(self, "_last_vol_reading"):
+                self._last_vol_reading = current_vol
 
-        if fuel_consumed > 0:
-            self._total_fuel_consumed += fuel_consumed
-            self._daily_fuel_consumed += fuel_consumed
-            self._fuel_consumed_since_reset += fuel_consumed
-
-        # Calculate instantaneous consumption rate
-        power_level = self.data.get("set_level")
-
-        # Issue #47: Estimate power level for Hcalory in Temperature mode
-        if power_level is None or power_level == 1:
-            if self._protocol_mode == 7:  # Hcalory
-                running_mode = self.data.get("running_mode")
-                if running_mode == 2:  # Temperature mode
-                    power_level = self._estimate_hcalory_power_level()
-
-        if power_level is None:
-            power_level = 1  # Fallback
-
-        if self.data.get("running_step") == RUNNING_STEP_RUNNING:
-            hourly_consumption = FUEL_CONSUMPTION_TABLE.get(power_level, 0.16)
-        else:
-            hourly_consumption = 0.0
-
-        # Update data dictionary
-        self.data["hourly_fuel_consumption"] = round(hourly_consumption, 2)
-        self.data["daily_fuel_consumed"] = round(self._daily_fuel_consumed, 2)
-        self.data["total_fuel_consumed"] = round(self._total_fuel_consumed, 2)
-        self.data["fuel_consumed_since_reset"] = round(self._fuel_consumed_since_reset, 2)
+            # 3. Calculate actual drop
+            fuel_dropped = self._last_vol_reading - current_vol
+            
+            # 4. If fuel dropped (and isn't a refill spike), add to total
+            if 0 < fuel_dropped < 0.5: 
+                self._total_fuel_consumed += fuel_dropped
+                
+                # 5. DISCOVERED RATE: Calculate L/h based on actual drop
+                if elapsed_seconds > 0:
+                    self.data["consumption_rate"] = (fuel_dropped / elapsed_seconds) * 3600
+            
+            self._last_vol_reading = current_vol
 
     def _update_runtime_tracking(self, elapsed_seconds: float) -> None:
         """Update runtime tracking."""
