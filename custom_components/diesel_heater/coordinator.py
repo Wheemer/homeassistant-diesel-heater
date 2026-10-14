@@ -1667,18 +1667,14 @@ class VevorHeaterCoordinator(DataUpdateCoordinator):
                         )
                     break
 
-            # Second, check for ABBA/HeaterCC device (service fff0)
+            # Second, identify the APK-verified ABBA/HeaterCC layout. FFF0 is
+            # shared with other controller families, so it is transport
+            # evidence only until the characteristic directions are known.
             if not self._is_hcalory_device:
                 for service in self._client.services:
                     if service.uuid.lower() == ABBA_SERVICE_UUID.lower():
-                        self._logger.info("🔍 Detected ABBA/HeaterCC heater (service fff0)")
-                        self._is_abba_device = True
-                        self._protocol_mode = 5  # ABBA protocol
-                        self._protocol = self._protocols[5]
-
-                        # Log all characteristics in this service for debugging
                         char_list = [f"{c.uuid} (props: {c.properties})" for c in service.characteristics]
-                        self._logger.info("📋 ABBA service characteristics: %s", char_list)
+                        self._logger.info("📋 FFF0 service characteristics: %s", char_list)
 
                         # Find both characteristics before assigning direction.
                         fff1_char = None
@@ -1689,28 +1685,38 @@ class VevorHeaterCoordinator(DataUpdateCoordinator):
                             elif char.uuid.lower() == DZ06_NEO_NOTIFY_UUID.lower():
                                 fff2_char = char
 
-                        if (
-                            fff1_char and fff2_char
+                        legacy_abba = (
+                            fff1_char
+                            and fff2_char
+                            and ("notify" in fff1_char.properties or "indicate" in fff1_char.properties)
+                            and ("write" in fff2_char.properties or "write-without-response" in fff2_char.properties)
+                        )
+                        split_neo = (
+                            fff1_char
+                            and fff2_char
                             and ("write" in fff1_char.properties or "write-without-response" in fff1_char.properties)
-                            and "notify" in fff2_char.properties
-                        ):
+                            and ("notify" in fff2_char.properties or "indicate" in fff2_char.properties)
+                        )
+
+                        if split_neo:
+                            self._is_abba_device = True
                             self._logger.info("Detected DZ06 split FFF0 layout: FFF1=write, FFF2=notify")
                             self._characteristic = fff2_char
                             self._active_char_uuid = fff2_char.uuid
                             self._abba_write_char = fff1_char
-                        else:
+                        elif legacy_abba:
+                            self._logger.info("Detected ABBA/HeaterCC legacy FFF0 layout")
+                            self._is_abba_device = True
+                            self._protocol_mode = 5
+                            self._protocol = self._protocols[5]
                             self._characteristic = fff1_char
-                            self._active_char_uuid = fff1_char.uuid if fff1_char else None
+                            self._active_char_uuid = fff1_char.uuid
                             self._abba_write_char = fff2_char
-
-                        # Warning if write characteristic not found
-                        if not self._abba_write_char:
-                            self._logger.warning(
-                                "⚠️ ABBA device but fff2 write characteristic not found! "
-                                "Will try writing to fff1 as fallback."
+                        else:
+                            self._logger.info(
+                                "FFF0 layout does not match ABBA/HeaterCC; "
+                                "continuing protocol detection"
                             )
-                            # Fall back to using fff1 for writing if fff2 not available
-                            self._abba_write_char = self._characteristic
                         break
 
             # HeatGenie uses the Environmental Sensing service only with
